@@ -98,7 +98,7 @@ Public Class FormMain
                 Dim LatestOpfDate As Date = Date.MinValue
                 Dim LatestCoverDate As Date = Date.MinValue
                 Dim LatestZipDate As Date = Date.MinValue
-                Dim LatestOtherDate As Date = Date.MinValue
+                Dim LatestEbookDate As Date = Date.MinValue
                 Dim AllFiles() As String = Directory.GetFiles(CurrBookDir, "*.*")
                 For Each currFile As String In AllFiles
                     Dim tempDate As Date = File.GetLastWriteTimeUtc(currFile)
@@ -110,8 +110,8 @@ Public Class FormMain
                         If LatestZipDate < tempDate Then
                             LatestZipDate = tempDate
                         End If
-                    ElseIf LatestOtherDate < tempDate Then
-                        LatestOtherDate = tempDate
+                    ElseIf LatestEbookDate < tempDate Then
+                        LatestEbookDate = tempDate
                     End If
                     ' --- Look for AZW3 files to add to comparison list ---
                     If currFile.EndsWith(".azw3") Then
@@ -123,11 +123,15 @@ Public Class FormMain
                         BookInfoList.Add(NewBookInfo)
                     End If
                 Next
-                If LatestOpfDate > LatestOtherDate OrElse
-                    LatestCoverDate > LatestOtherDate OrElse
-                    LatestZipDate > LatestOtherDate Then
-                    TextBoxResults.AppendText(CurrBookDir + vbCrLf)
-                    Continue For
+                ' --- Compare ebooks to metadata, cover files ---
+                ' --- Ignore empty entries without actual ebook files ---
+                If LatestEbookDate > Date.MinValue Then
+                    If LatestOpfDate > LatestEbookDate OrElse
+                       LatestCoverDate > LatestEbookDate OrElse
+                       LatestZipDate > LatestEbookDate Then
+                        TextBoxResults.AppendText(CurrBookDir + vbCrLf)
+                        Continue For
+                    End If
                 End If
             Next
         Next
