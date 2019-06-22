@@ -85,7 +85,7 @@ Public Class FormMain
         My.Settings.Save()
         TextBoxResults.Text = ""
         Dim BookInfoList As New List(Of BookInfo)
-        ' --- Read through all Calibre files looking for ZIP and AZW3 formats ---
+        ' --- Read through all Calibre files looking for files needing updating ---
         Dim AuthorDirs() As String = Directory.GetDirectories(TextBoxFromPath.Text)
         For Each CurrAuthorDir As String In AuthorDirs
             Dim BookDirs() As String = Directory.GetDirectories(CurrAuthorDir)
@@ -94,36 +94,41 @@ Public Class FormMain
                 UpdateStatusLabel()
                 TextBoxFileName.Text = CurrBookDir
                 Application.DoEvents()
-                ' --- Look for zip files with missing or outdated AZW3 files ---
-                Dim ZipFiles() As String = Directory.GetFiles(CurrBookDir, "*.zip")
-                For Each CurrZipFile As String In ZipFiles
-                    Dim CurrMobiFile As String = CurrZipFile.Replace(".zip", ".azw3")
-                    If Not File.Exists(CurrMobiFile) Then
-                        TextBoxResults.AppendText(CurrBookDir + vbCrLf)
-                        Continue For
-                    End If
-                    If File.GetLastWriteTimeUtc(CurrZipFile) > File.GetLastWriteTimeUtc(CurrMobiFile) Then
-                        TextBoxResults.AppendText(CurrBookDir + vbCrLf)
-                        Continue For
-                    End If
-                    Dim CurrCoverFile As String = Path.GetDirectoryName(CurrZipFile) + "\cover.jpg"
-                    If File.Exists(CurrCoverFile) Then
-                        If File.GetLastWriteTimeUtc(CurrCoverFile) > File.GetLastWriteTimeUtc(CurrMobiFile) Then
-                            TextBoxResults.AppendText(CurrBookDir + vbCrLf)
-                            Continue For
+                ' --- Look for OPF files with newer data than ebook files ---
+                Dim LatestOpfDate As Date = Date.MinValue
+                Dim LatestCoverDate As Date = Date.MinValue
+                Dim LatestZipDate As Date = Date.MinValue
+                Dim LatestOtherDate As Date = Date.MinValue
+                Dim AllFiles() As String = Directory.GetFiles(CurrBookDir, "*.*")
+                For Each currFile As String In AllFiles
+                    Dim tempDate As Date = File.GetLastWriteTimeUtc(currFile)
+                    If currFile.EndsWith("metadata.opf") Then
+                        LatestOpfDate = tempDate
+                    ElseIf currFile.EndsWith("cover.jpg") Then
+                        LatestCoverDate = tempDate
+                    ElseIf currFile.EndsWith(".zip") Then
+                        If LatestZipDate < tempDate Then
+                            LatestZipDate = tempDate
                         End If
+                    ElseIf LatestOtherDate < tempDate Then
+                        LatestOtherDate = tempDate
+                    End If
+                    ' --- Look for AZW3 files to add to comparison list ---
+                    If currFile.EndsWith(".azw3") Then
+                        Dim NewBookInfo As New BookInfo
+                        With NewBookInfo
+                            .Filename = currFile
+                            .FileDateTime = File.GetLastWriteTimeUtc(currFile)
+                        End With
+                        BookInfoList.Add(NewBookInfo)
                     End If
                 Next
-                ' --- Look for AZW3 files to add to comparison list ---
-                Dim MobiFiles() As String = Directory.GetFiles(CurrBookDir, "*.azw3")
-                For Each CurrMobiFile As String In MobiFiles
-                    Dim NewBookInfo As New BookInfo
-                    With NewBookInfo
-                        .Filename = CurrMobiFile
-                        .FileDateTime = File.GetLastWriteTimeUtc(CurrMobiFile)
-                    End With
-                    BookInfoList.Add(NewBookInfo)
-                Next
+                If LatestOpfDate > LatestOtherDate OrElse
+                    LatestCoverDate > LatestOtherDate OrElse
+                    LatestZipDate > LatestOtherDate Then
+                    TextBoxResults.AppendText(CurrBookDir + vbCrLf)
+                    Continue For
+                End If
             Next
         Next
         ' --- Check the Kindle files to see if they are out of date ---
