@@ -1,8 +1,10 @@
 ﻿' --------------------------------
-' --- FormMain.vb - 01/25/2016 ---
+' --- FormMain.vb - 06/23/2019 ---
 ' --------------------------------
 
 ' ----------------------------------------------------------------------------------------------------
+' 06/23/2019 - SBakker
+'            - Lots of changes to date checking, by file extension mostly.
 ' 01/25/2016 - SBakker
 '            - Display leftover SDR directories.
 ' 11/29/2014 - SBakker
@@ -101,6 +103,9 @@ Public Class FormMain
                 Dim LatestEbookDate As Date = Date.MinValue
                 Dim AllFiles() As String = Directory.GetFiles(CurrBookDir, "*.*")
                 For Each currFile As String In AllFiles
+                    If currFile.Contains("My Clippings") Then
+                        Continue For
+                    End If
                     Dim tempDate As Date = File.GetLastWriteTimeUtc(currFile)
                     If currFile.EndsWith("metadata.opf") Then
                         LatestOpfDate = tempDate
@@ -110,8 +115,11 @@ Public Class FormMain
                         If LatestZipDate < tempDate Then
                             LatestZipDate = tempDate
                         End If
-                    ElseIf LatestEbookDate < tempDate Then
-                        LatestEbookDate = tempDate
+                    ElseIf currfile.EndsWith(".epub") OrElse
+                        currFile.EndsWith(".azw3") Then
+                        If LatestEbookDate < tempDate Then
+                            LatestEbookDate = tempDate
+                        End If
                     End If
                     ' --- Look for AZW3 files to add to comparison list ---
                     If currFile.EndsWith(".azw3") Then
